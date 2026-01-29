@@ -1,8 +1,28 @@
+import os
+import stat
+import seleniumbase
 from seleniumbase import SB
 import re
 import json
 import time
 import sys
+
+def fix_driver_permissions():
+    """
+    Attempts to fix permission deny error on uc_driver in Linux Cloud environments.
+    """
+    try:
+        # Locate seleniumbase drivers folder
+        sb_path = os.path.dirname(seleniumbase.__file__)
+        driver_path = os.path.join(sb_path, "drivers", "uc_driver")
+        
+        if os.path.exists(driver_path):
+            st_mode = os.stat(driver_path).st_mode
+            # Add execute permission for everyone
+            os.chmod(driver_path, st_mode | stat.S_IEXEC)
+            print(f"Fixed permissions for: {driver_path}")
+    except Exception as e:
+        print(f"Failed to fix driver permissions: {e}")
 
 def scrape_stream_app_mode(target_url):
     """
@@ -10,6 +30,10 @@ def scrape_stream_app_mode(target_url):
     Takes a specific URL (Movie page or Episode page).
     Returns dict with stream info or None.
     """
+    # Fix permissions before running
+    if sys.platform.startswith("linux"):
+        fix_driver_permissions()
+
     result_data = None
     
     # Check if we need to navigate to an episode or if this is already the player page/episode page.
@@ -21,10 +45,8 @@ def scrape_stream_app_mode(target_url):
         # Adding xvfb=True ONLY on Linux (Cloud) to help with stability.
         is_linux = sys.platform.startswith("linux")
         
-        # Fix for Cloud: 'uc=True' fails with Permission Denied on Streamlit Cloud.
-        # We must use standard mode (uc=False) on Linux.
-        # On Windows, we keep uc=True (Visible) for local testing.
-        use_uc = False if is_linux else True
+        # We re-enable uc=True on Linux because we are fixing permissions now.
+        use_uc = True 
         use_headless = True if is_linux else False
         
         with SB(uc=use_uc, headless=use_headless, xvfb=is_linux) as sb:
