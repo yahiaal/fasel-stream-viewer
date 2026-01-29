@@ -88,10 +88,20 @@ def scrape_stream_app_mode(target_url):
         driver = uc.Chrome(**kwargs)
         print("[SCRAPER] ChromeDriver initialized successfully!")
         
+        # Set timeouts to prevent infinite hangs
+        driver.set_page_load_timeout(30)  # 30 seconds max for page load
+        driver.set_script_timeout(30)
+        print("[SCRAPER] Timeouts set (30s)")
+        
         # 4. Navigation & Logic
         print(f"[SCRAPER] Navigating to: {target_url}")
-        driver.get(target_url)
-        print("[SCRAPER] Page loaded, waiting 3 seconds...")
+        try:
+            driver.get(target_url)
+        except Exception as nav_error:
+            print(f"[SCRAPER] Navigation timeout/error: {nav_error}")
+            # Even if timeout, we might have partial page - continue
+            
+        print("[SCRAPER] Page loaded (or timed out), waiting 3 seconds...")
         time.sleep(3)
         print(f"[SCRAPER] Current page title: {driver.title}")
         
