@@ -156,7 +156,8 @@ def fetch_stream_from_api(target_url):
     scrape_endpoint = f"{api_url}/scrape"
     
     try:
-        resp = httpx.get(scrape_endpoint, params={"url": target_url}, timeout=60.0)
+        # 180s timeout: Render free tier can take 30-60s to cold start, plus scraping time
+        resp = httpx.get(scrape_endpoint, params={"url": target_url}, timeout=180.0)
         if resp.status_code == 200:
             return resp.json()
         else:
