@@ -52,13 +52,13 @@ def scrape_stream_app_mode(target_url):
         
         # 1. Setup Driver Path
         custom_driver_path = None
-        if is_linux:
-            custom_driver_path = setup_local_driver()
+        # if is_linux:
+        #     custom_driver_path = setup_local_driver()
             
-            # Start Xvfb if available (better than headless for detection)
-            if Display:
-                display = Display(visible=0, size=(1280, 720))
-                display.start()
+        #     # Start Xvfb if available (better than headless for detection)
+        if is_linux and Display:
+            display = Display(visible=0, size=(1280, 720))
+            display.start()
 
         # 2. Initialize Chrome Options
         options = uc.ChromeOptions()
@@ -72,8 +72,8 @@ def scrape_stream_app_mode(target_url):
         # 3. Initialize Driver
         # We explicitly pass driver_executable_path if we found it
         kwargs = {"options": options}
-        if custom_driver_path:
-            kwargs["driver_executable_path"] = custom_driver_path
+        # if custom_driver_path:
+        #     kwargs["driver_executable_path"] = custom_driver_path
             
         driver = uc.Chrome(**kwargs)
         
