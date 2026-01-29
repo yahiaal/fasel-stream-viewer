@@ -4,3 +4,5 @@ selectolax
 seleniumbase
 undetected-chromedriver
 pyvirtualdisplay
+fastapi
+uvicorn

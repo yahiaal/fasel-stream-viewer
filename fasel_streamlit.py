@@ -12,7 +12,7 @@ scraper_path = os.path.join(current_dir, 'stream_scraper')
 if scraper_path not in sys.path:
     sys.path.append(scraper_path)
 
-from scraper import scrape_stream_app_mode
+# from scraper import scrape_stream_app_mode
 
 # Constants
 BASE_URL = "https://web12818x.faselhdx.bid"
@@ -245,9 +245,32 @@ if st.session_state.selected_item:
             else:
                 st.warning("No episodes found for this selection.")
         
+# --- Backend API Integration ---
+
+def fetch_stream_from_api(target_url):
+    """
+    Calls the Backend API on Render to scrape the stream.
+    """
+    # Get API URL from secrets or default to local
+    api_url = st.secrets.get("API_URL", "http://localhost:10000")
+    if api_url.endswith("/"): api_url = api_url[:-1]
+    
+    scrape_endpoint = f"{api_url}/scrape"
+    
+    try:
+        resp = httpx.get(scrape_endpoint, params={"url": target_url}, timeout=60.0) # Longer timeout for scraping
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            return {"error": f"API Error {resp.status_code}: {resp.text}"}
+    except Exception as e:
+        return {"error": f"Connection Failed: {e}"}
+
+# ... [Rest of UI] ...
+
         if st.button("🚀 Fetch Stream Links", type="primary", use_container_width=True):
-            with st.spinner("Extracting master playlist..."):
-                res = scrape_stream_app_mode(target_url)
+            with st.spinner("Extracting master playlist via Backend..."):
+                res = fetch_stream_from_api(target_url)
                 if res and "error" not in res:
                     st.session_state.current_stream = res
                     # Parse the m3u8 for qualities
