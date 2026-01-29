@@ -251,13 +251,14 @@ if st.session_state.selected_item:
         if st.button("🚀 Fetch Stream Links", type="primary", use_container_width=True):
             with st.spinner("Extracting master playlist..."):
                 res = scrape_stream_app_mode(target_url)
-                if res:
+                if res and "error" not in res:
                     st.session_state.current_stream = res
                     # Parse the m3u8 for qualities
                     variants = parse_m3u8(res['url'], res['headers']['Referer'])
                     st.session_state.variants = variants
                 else:
-                    st.error("Extraction failed.")
+                    err_msg = res['error'] if res and 'error' in res else "Unknown Error"
+                    st.error(f"Extraction failed: {err_msg}")
 
     if st.session_state.variants:
         st.divider()

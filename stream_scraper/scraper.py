@@ -88,7 +88,7 @@ def scrape_stream_app_mode(target_url):
     except Exception as e:
         print(f"Scraper Error: {e}")
         # Return error so UI can show it
-        return None
+        return {"error": str(e)}
         
     return result_data
 
