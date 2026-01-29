@@ -25,83 +25,65 @@ def scrape_stream_app_mode(target_url):
         
         # Removed ad_block_on=True as it might affect stability/extensions
         with SB(uc=True, headless=use_headless, xvfb=is_linux) as sb:
-            # Enable CDP blocking for speed
-            try:
-                sb.driver.execute_cdp_cmd("Network.enable", {})
-                sb.driver.execute_cdp_cmd("Network.setBlockedURLs", {
-                    "urls": [
-                        "*doubleclick*", "*googlesyndication*", "*google-analytics*", 
-                        "*adservice*", "*tracking*", "*teads*", "*outbrain*", 
-                        "*taboola*", "*popads*", "*exoclick*"
-                    ]
-                })
-            except: pass
-
-        # print(f"DEBUG: Navigating to {target_url}")
-        sb.open(target_url)
-        sb.wait_for_ready_state_complete()
-        sb.sleep(2)
-        
-        # Logic to find player iframe
-        # 1. Look for 'player_iframe'
-        player_url = None
-        try:
-            iframe = sb.find_element("iframe[name='player_iframe']")
-            player_url = iframe.get_attribute("src")
-        except:
-            # Fallback
-            frames = sb.find_elements("iframe")
-            for f in frames:
-                src = f.get_attribute("src")
-                if src and "video_player" in src:
-                    player_url = src
-                    break
-        
-        if not player_url:
-            # Maybe we need to click "Watch" or a server tab first?
-            # Common in movies: '.server--item'
-            if sb.is_element_visible(".server--item"):
-                try:
-                    sb.click(".server--item")
-                    sb.sleep(2)
-                    # Re-check frames
-                    frames = sb.find_elements("iframe")
-                    for f in frames:
-                        src = f.get_attribute("src")
-                        if src and "video_player" in src:
-                            player_url = src
-                            break
-                except: pass
-        
-        if player_url:
-            # print(f"DEBUG: Found player: {player_url}")
-            sb.open(player_url)
+            # print(f"DEBUG: Navigating to {target_url}")
+            sb.open(target_url)
             sb.wait_for_ready_state_complete()
-            sb.sleep(3)
+            sb.sleep(2)
             
-            source = sb.get_page_source()
-            matches = re.findall(r'(https?://[^"\s\']+\.m3u8[^"\s\']*)', source)
+            # Logic to find player iframe
+            # 1. Look for 'player_iframe'
+            player_url = None
+            try:
+                iframe = sb.find_element("iframe[name='player_iframe']")
+                player_url = iframe.get_attribute("src")
+            except:
+                # Fallback
+                frames = sb.find_elements("iframe")
+                for f in frames:
+                    src = f.get_attribute("src")
+                    if src and "video_player" in src:
+                        player_url = src
+                        break
             
-            if matches:
-                master = next((m for m in matches if "master" in m), matches[0])
+            if not player_url:
+                # Maybe we need to click "Watch" or a server tab first?
+                # Common in movies: '.server--item'
+                if sb.is_element_visible(".server--item"):
+                    try:
+                        sb.click(".server--item")
+                        sb.sleep(2)
+                        # Re-check frames
+                        frames = sb.find_elements("iframe")
+                        for f in frames:
+                            src = f.get_attribute("src")
+                            if src and "video_player" in src:
+                                player_url = src
+                                break
+                    except: pass
+            
+            if player_url:
+                # print(f"DEBUG: Found player: {player_url}")
+                sb.open(player_url)
+                sb.wait_for_ready_state_complete()
+                sb.sleep(3)
                 
-                headers = {
-                    "Referer": player_url,
-                    "User-Agent": sb.get_user_agent()
-                }
-                curl_cmd = f"curl '{master}' -H 'Referer: {player_url}' -H 'User-Agent: {headers['User-Agent']}'"
+                source = sb.get_page_source()
+                matches = re.findall(r'(https?://[^"\s\']+\.m3u8[^"\s\']*)', source)
                 
-                result_data = {
-                    "url": master,
-                    "headers": headers,
-                    "curl": curl_cmd
-                }
-        
-                result_data = {
-                    "url": master,
-                    "headers": headers,
-                    "curl": curl_cmd
-                }
+                if matches:
+                    master = next((m for m in matches if "master" in m), matches[0])
+                    
+                    headers = {
+                        "Referer": player_url,
+                        "User-Agent": sb.get_user_agent()
+                    }
+                    curl_cmd = f"curl '{master}' -H 'Referer: {player_url}' -H 'User-Agent: {headers['User-Agent']}'"
+                    
+                    result_data = {
+                        "url": master,
+                        "headers": headers,
+                        "curl": curl_cmd
+                    }
                 
     except Exception as e:
         print(f"Scraper Error: {e}")
