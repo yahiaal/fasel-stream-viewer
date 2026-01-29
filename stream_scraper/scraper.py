@@ -15,18 +15,21 @@ def scrape_stream_app_mode(target_url):
     # If the user selected an episode link from the app, 'target_url' is the episode page.
     # If the user selected a movie, 'target_url' is the movie page (which contains the player).
     
-    with SB(uc=True, test=True, ad_block_on=True, headless=True) as sb:
-        # Enable CDP blocking for speed
-        try:
-            sb.driver.execute_cdp_cmd("Network.enable", {})
-            sb.driver.execute_cdp_cmd("Network.setBlockedURLs", {
-                "urls": [
-                    "*doubleclick*", "*googlesyndication*", "*google-analytics*", 
-                    "*adservice*", "*tracking*", "*teads*", "*outbrain*", 
-                    "*taboola*", "*popads*", "*exoclick*"
-                ]
-            })
-        except: pass
+    try:
+        # NOTE: 'uc=True' (Undetected Mode) consumes too much memory for free cloud tiers.
+        # We switch to standard headless mode which is more stable.
+        with SB(uc=False, test=True, ad_block_on=True, headless=True) as sb:
+            # Enable CDP blocking for speed
+            try:
+                sb.driver.execute_cdp_cmd("Network.enable", {})
+                sb.driver.execute_cdp_cmd("Network.setBlockedURLs", {
+                    "urls": [
+                        "*doubleclick*", "*googlesyndication*", "*google-analytics*", 
+                        "*adservice*", "*tracking*", "*teads*", "*outbrain*", 
+                        "*taboola*", "*popads*", "*exoclick*"
+                    ]
+                })
+            except: pass
 
         # print(f"DEBUG: Navigating to {target_url}")
         sb.open(target_url)
@@ -87,6 +90,17 @@ def scrape_stream_app_mode(target_url):
                     "headers": headers,
                     "curl": curl_cmd
                 }
+        
+                result_data = {
+                    "url": master,
+                    "headers": headers,
+                    "curl": curl_cmd
+                }
+                
+    except Exception as e:
+        print(f"Scraper Error: {e}")
+        # Return error so UI can show it
+        return None
         
     return result_data
 
