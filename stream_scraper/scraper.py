@@ -70,10 +70,11 @@ def scrape_stream_app_mode(target_url):
         options.add_argument("--disable-dev-shm-usage")
         
         # 3. Initialize Driver
-        # We explicitly pass driver_executable_path if we found it
-        kwargs = {"options": options}
-        # if custom_driver_path:
-        #     kwargs["driver_executable_path"] = custom_driver_path
+        # Force ChromeDriver version to match installed Chrome (144)
+        kwargs = {
+            "options": options,
+            "version_main": 144  # Match the installed Chrome version on Render
+        }
             
         driver = uc.Chrome(**kwargs)
         
