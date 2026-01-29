@@ -7,8 +7,58 @@ import json
 import time
 import sys
 
-# Solution 1: Redirect SeleniumBase to writable /tmp directory to avoid Permission Denied in site-packages
-os.environ['SELENIUMBASE_DIR'] = '/tmp/seleniumbase'
+import shutil
+import undetected_chromedriver as uc
+
+def setup_local_driver():
+    """
+    Copies the system uc_driver to /tmp/uc_driver and makes it executable.
+    Returns the path to the new writable driver.
+    """
+    try:
+        # 1. Locate the installed driver
+        # It's usually in site-packages/seleniumbase/drivers/uc_driver
+        sb_path = os.path.dirname(seleniumbase.__file__)
+        system_driver_path = os.path.join(sb_path, "drivers", "uc_driver")
+        
+        # 2. Define our local target in /tmp (writable)
+        # Using /tmp is safer on Cloud than local dir
+        local_target = "/tmp/uc_driver"
+        
+        # 3. Check if source exists
+        if os.path.exists(system_driver_path):
+            # Clean up old copy if any
+            if os.path.exists(local_target):
+                try: os.remove(local_target)
+                except: pass
+            
+            # Copy file
+            shutil.copy2(system_driver_path, local_target)
+            
+            # 4. Make it executable
+            st_mode = os.stat(local_target).st_mode
+            os.chmod(local_target, st_mode | stat.S_IEXEC)
+            
+            print(f"DEBUG: Setup local driver at {local_target}")
+            return local_target
+    except Exception as e:
+        print(f"DEBUG: Failed to setup local driver: {e}")
+    return None
+
+def patch_uc_driver(custom_path):
+    """
+    Monkeypatch undetected_chromedriver.Chrome to inject driver_executable_path.
+    """
+    print(f"DEBUG: Patching uc.Chrome to use {custom_path}")
+    original_init = uc.Chrome.__init__
+    
+    def patched_init(self, *args, **kwargs):
+        # Force the driver path if not set
+        if 'driver_executable_path' not in kwargs:
+            kwargs['driver_executable_path'] = custom_path
+        return original_init(self, *args, **kwargs)
+    
+    uc.Chrome.__init__ = patched_init
 
 def scrape_stream_app_mode(target_url):
     """
@@ -16,6 +66,13 @@ def scrape_stream_app_mode(target_url):
     Takes a specific URL (Movie page or Episode page).
     Returns dict with stream info or None.
     """
+    # PATCHING: specifically for Linux (Cloud)
+    if sys.platform.startswith("linux"):
+        # We need to bypass the Permission Denied error on site-packages
+        custom_driver = setup_local_driver()
+        if custom_driver:
+            patch_uc_driver(custom_driver)
+
     result_data = None
     
     # Check if we need to navigate to an episode or if this is already the player page/episode page.
