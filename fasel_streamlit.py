@@ -146,6 +146,24 @@ def parse_m3u8(master_url, referer):
         st.error(f"Failed to parse M3U8: {e}")
         return []
 
+def fetch_stream_from_api(target_url):
+    """
+    Calls the Backend API on Render to scrape the stream.
+    """
+    # Get API URL from secrets or default to local
+    # Remove trailing slash if present
+    api_url = st.secrets.get("API_URL", "http://localhost:10000").rstrip("/")
+    scrape_endpoint = f"{api_url}/scrape"
+    
+    try:
+        resp = httpx.get(scrape_endpoint, params={"url": target_url}, timeout=60.0)
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            return {"error": f"API Error {resp.status_code}: {resp.text}"}
+    except Exception as e:
+        return {"error": f"Connection Failed: {e}"}
+
 # --- UI Layout ---
 
 st.set_page_config(page_title="FaselHD Link Fetcher", page_icon="🔗", layout="wide")
@@ -245,28 +263,7 @@ if st.session_state.selected_item:
             else:
                 st.warning("No episodes found for this selection.")
         
-# --- Backend API Integration ---
-
-def fetch_stream_from_api(target_url):
-    """
-    Calls the Backend API on Render to scrape the stream.
-    """
-    # Get API URL from secrets or default to local
-    api_url = st.secrets.get("API_URL", "http://localhost:10000")
-    if api_url.endswith("/"): api_url = api_url[:-1]
-    
-    scrape_endpoint = f"{api_url}/scrape"
-    
-    try:
-        resp = httpx.get(scrape_endpoint, params={"url": target_url}, timeout=60.0) # Longer timeout for scraping
-        if resp.status_code == 200:
-            return resp.json()
-        else:
-            return {"error": f"API Error {resp.status_code}: {resp.text}"}
-    except Exception as e:
-        return {"error": f"Connection Failed: {e}"}
-
-# ... [Rest of UI] ...
+        # Stream Button
 
         if st.button("🚀 Fetch Stream Links", type="primary", use_container_width=True):
             with st.spinner("Extracting master playlist via Backend..."):
