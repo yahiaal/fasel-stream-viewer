@@ -12,10 +12,7 @@ scraper_path = os.path.join(current_dir, 'stream_scraper')
 if scraper_path not in sys.path:
     sys.path.append(scraper_path)
 
-try:
-    from scraper import scrape_stream_app_mode
-except ImportError:
-    pass
+from scraper import scrape_stream_app_mode
 
 # Constants
 BASE_URL = "https://web12818x.faselhdx.bid"

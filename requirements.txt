@@ -2,3 +2,4 @@ streamlit
 httpx
 selectolax
 seleniumbase
+undetected-chromedriver
