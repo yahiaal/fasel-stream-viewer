@@ -7,33 +7,8 @@ import json
 import time
 import sys
 
-import shutil
-
-def setup_custom_driver():
-    """
-    Copies uc_driver to a writable local directory and makes it executable.
-    Returns the path to the custom driver.
-    """
-    try:
-        # Locate original driver
-        sb_path = os.path.dirname(seleniumbase.__file__)
-        original_driver_path = os.path.join(sb_path, "drivers", "uc_driver")
-        
-        # Define local writable path (in the project directory)
-        local_driver_path = os.path.abspath("uc_driver_local")
-        
-        if os.path.exists(original_driver_path):
-            # Copy to local path
-            shutil.copy2(original_driver_path, local_driver_path)
-            
-            # Make executable
-            st_mode = os.stat(local_driver_path).st_mode
-            os.chmod(local_driver_path, st_mode | stat.S_IEXEC)
-            print(f"Set up local driver at: {local_driver_path}")
-            return local_driver_path
-    except Exception as e:
-        print(f"Failed to setup custom driver: {e}")
-    return None
+# Solution 1: Redirect SeleniumBase to writable /tmp directory to avoid Permission Denied in site-packages
+os.environ['SELENIUMBASE_DIR'] = '/tmp/seleniumbase'
 
 def scrape_stream_app_mode(target_url):
     """
@@ -41,11 +16,6 @@ def scrape_stream_app_mode(target_url):
     Takes a specific URL (Movie page or Episode page).
     Returns dict with stream info or None.
     """
-    # Prepare custom driver path if on Linux
-    custom_driver_path = None
-    if sys.platform.startswith("linux"):
-        custom_driver_path = setup_custom_driver()
-
     result_data = None
     
     # Check if we need to navigate to an episode or if this is already the player page/episode page.
@@ -73,19 +43,7 @@ def scrape_stream_app_mode(target_url):
             "xvfb": is_linux
         }
         
-        if custom_driver_path:
-             # This argument is specific to undetected_chromedriver but SB *might* pass it.
-             # If not, we rely on the fact that we put it in valid path or rely on PATH?
-             # Actually, best way to force it in SB context is undocumented.
-             # Let's try attempting to set 'driver_version' maybe? No.
-             
-             # Better fallback: If SB doesn't accept it, we might just rely on PATH if we add our cwd to PATH?
-             os.environ["PATH"] += os.pathsep + os.path.dirname(custom_driver_path)
-             pass 
-
-        # We will try passing it as a kwarg, hoping SB passes extra kwargs to uc.Chrome
-        # If SB filters kwargs, this might need a different approach.
-        # But 'undetected' arg in SB calls Driver(uc=True).
+        # We rely on the monkeypatch for the driver path now.
         
         with SB(**sb_kwargs) as sb:
             # print(f"DEBUG: Navigating to {target_url}")
