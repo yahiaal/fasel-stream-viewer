@@ -29,7 +29,7 @@ HEADERS = {
 def search_fasel(query):
     params = {"s": query}
     try:
-        resp = httpx.get(BASE_URL, params=params, headers=HEADERS, timeout=10)
+        resp = httpx.get(BASE_URL, params=params, headers=HEADERS, timeout=10, follow_redirects=True)
         tree = HTMLParser(resp.text)
         results = []
         for node in tree.css("div.postDiv"):

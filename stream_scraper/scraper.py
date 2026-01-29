@@ -2,6 +2,7 @@ from seleniumbase import SB
 import re
 import json
 import time
+import sys
 
 def scrape_stream_app_mode(target_url):
     """
@@ -16,9 +17,14 @@ def scrape_stream_app_mode(target_url):
     # If the user selected a movie, 'target_url' is the movie page (which contains the player).
     
     try:
-        # NOTE: 'uc=True' (Undetected Mode) consumes too much memory for free cloud tiers.
-        # We switch to standard headless mode which is more stable.
-        with SB(uc=False, test=True, ad_block_on=True, headless=True) as sb:
+        # Re-enabling uc=True because standard headless is blocked.
+        # Adding xvfb=True ONLY on Linux (Cloud) to help with stability.
+        is_linux = sys.platform.startswith("linux")
+        # On Windows, use visible mode for stability. On Linux (Cloud), use headless.
+        use_headless = True if is_linux else False
+        
+        # Removed ad_block_on=True as it might affect stability/extensions
+        with SB(uc=True, headless=use_headless, xvfb=is_linux) as sb:
             # Enable CDP blocking for speed
             try:
                 sb.driver.execute_cdp_cmd("Network.enable", {})
