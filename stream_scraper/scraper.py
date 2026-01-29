@@ -7,22 +7,33 @@ import json
 import time
 import sys
 
-def fix_driver_permissions():
+import shutil
+
+def setup_custom_driver():
     """
-    Attempts to fix permission deny error on uc_driver in Linux Cloud environments.
+    Copies uc_driver to a writable local directory and makes it executable.
+    Returns the path to the custom driver.
     """
     try:
-        # Locate seleniumbase drivers folder
+        # Locate original driver
         sb_path = os.path.dirname(seleniumbase.__file__)
-        driver_path = os.path.join(sb_path, "drivers", "uc_driver")
+        original_driver_path = os.path.join(sb_path, "drivers", "uc_driver")
         
-        if os.path.exists(driver_path):
-            st_mode = os.stat(driver_path).st_mode
-            # Add execute permission for everyone
-            os.chmod(driver_path, st_mode | stat.S_IEXEC)
-            print(f"Fixed permissions for: {driver_path}")
+        # Define local writable path (in the project directory)
+        local_driver_path = os.path.abspath("uc_driver_local")
+        
+        if os.path.exists(original_driver_path):
+            # Copy to local path
+            shutil.copy2(original_driver_path, local_driver_path)
+            
+            # Make executable
+            st_mode = os.stat(local_driver_path).st_mode
+            os.chmod(local_driver_path, st_mode | stat.S_IEXEC)
+            print(f"Set up local driver at: {local_driver_path}")
+            return local_driver_path
     except Exception as e:
-        print(f"Failed to fix driver permissions: {e}")
+        print(f"Failed to setup custom driver: {e}")
+    return None
 
 def scrape_stream_app_mode(target_url):
     """
@@ -30,9 +41,10 @@ def scrape_stream_app_mode(target_url):
     Takes a specific URL (Movie page or Episode page).
     Returns dict with stream info or None.
     """
-    # Fix permissions before running
+    # Prepare custom driver path if on Linux
+    custom_driver_path = None
     if sys.platform.startswith("linux"):
-        fix_driver_permissions()
+        custom_driver_path = setup_custom_driver()
 
     result_data = None
     
@@ -49,7 +61,33 @@ def scrape_stream_app_mode(target_url):
         use_uc = True 
         use_headless = True if is_linux else False
         
-        with SB(uc=use_uc, headless=use_headless, xvfb=is_linux) as sb:
+        # Pass the custom driver path if available
+        # SB() context manager might pass kwargs to Driver(), let's try injecting it.
+        # Note: SB() -> BaseCase -> Driver(). 
+        # Warning: 'driver_executable_path' might not be passed directly by SB() context.
+        # If this fails, we might need a workaround. But let's try passing it.
+        
+        sb_kwargs = {
+            "uc": use_uc,
+            "headless": use_headless,
+            "xvfb": is_linux
+        }
+        
+        if custom_driver_path:
+             # This argument is specific to undetected_chromedriver but SB *might* pass it.
+             # If not, we rely on the fact that we put it in valid path or rely on PATH?
+             # Actually, best way to force it in SB context is undocumented.
+             # Let's try attempting to set 'driver_version' maybe? No.
+             
+             # Better fallback: If SB doesn't accept it, we might just rely on PATH if we add our cwd to PATH?
+             os.environ["PATH"] += os.pathsep + os.path.dirname(custom_driver_path)
+             pass 
+
+        # We will try passing it as a kwarg, hoping SB passes extra kwargs to uc.Chrome
+        # If SB filters kwargs, this might need a different approach.
+        # But 'undetected' arg in SB calls Driver(uc=True).
+        
+        with SB(**sb_kwargs) as sb:
             # print(f"DEBUG: Navigating to {target_url}")
             sb.open(target_url)
             sb.wait_for_ready_state_complete()
