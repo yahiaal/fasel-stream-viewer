@@ -106,55 +106,84 @@ def scrape_stream_app_mode(target_url):
         print(f"[SCRAPER] Current page title: {driver.title}")
         
         # Find player iframe
+        print("[SCRAPER] Looking for player iframe...")
         player_url = None
         try:
             # Try finding by name first
+            print("[SCRAPER] Trying By.NAME='player_iframe'...")
             frames = driver.find_elements(By.NAME, "player_iframe")
+            print(f"[SCRAPER] Found {len(frames)} frames by name")
             if frames:
                 player_url = frames[0].get_attribute("src")
+                print(f"[SCRAPER] Got player_url from name: {player_url}")
             else:
                 # Fallback: find any iframe with 'video_player'
+                print("[SCRAPER] Trying all iframes...")
                 frames = driver.find_elements(By.TAG_NAME, "iframe")
-                for f in frames:
+                print(f"[SCRAPER] Found {len(frames)} total iframes")
+                for i, f in enumerate(frames):
                     src = f.get_attribute("src")
+                    print(f"[SCRAPER] iframe[{i}] src: {src}")
                     if src and "video_player" in src:
                         player_url = src
+                        print(f"[SCRAPER] Found video_player iframe!")
                         break
-        except: pass
+        except Exception as e:
+            print(f"[SCRAPER] Error finding iframes: {e}")
         
         if not player_url:
             # Check for server buttons (common in Fasel)
+            print("[SCRAPER] No player found, checking for server buttons...")
             try:
                 servers = driver.find_elements(By.CSS_SELECTOR, ".server--item")
+                print(f"[SCRAPER] Found {len(servers)} server buttons")
                 if servers:
+                    print("[SCRAPER] Clicking first server button...")
                     servers[0].click()
                     time.sleep(2)
                     # Re-check iframes
                     frames = driver.find_elements(By.TAG_NAME, "iframe")
+                    print(f"[SCRAPER] After click, found {len(frames)} iframes")
                     for f in frames:
                         src = f.get_attribute("src")
                         if src and "video_player" in src:
                             player_url = src
+                            print(f"[SCRAPER] Found player after click: {player_url}")
                             break
-            except: pass
+            except Exception as e:
+                print(f"[SCRAPER] Error with server buttons: {e}")
             
         if not player_url:
+            print("[SCRAPER] FAILED: No player found anywhere")
             return {"error": f"Player not found. Title: {driver.title}"}
+        
+        print(f"[SCRAPER] SUCCESS: Player URL = {player_url}")
             
         # 5. Extract M3U8 from Player
-        driver.get(player_url)
+        print(f"[SCRAPER] Navigating to player: {player_url}")
+        try:
+            driver.get(player_url)
+        except Exception as nav_err:
+            print(f"[SCRAPER] Player navigation error: {nav_err}")
+            
+        print("[SCRAPER] Player loaded, waiting 3 seconds...")
         time.sleep(3)
         source = driver.page_source
+        print(f"[SCRAPER] Got page source, length: {len(source)}")
         
+        print("[SCRAPER] Searching for m3u8 URLs...")
         matches = re.findall(r'(https?://[^"\s\']+\.m3u8[^"\s\']*)', source)
+        print(f"[SCRAPER] Found {len(matches)} m3u8 URLs")
         if matches:
             master = next((m for m in matches if "master" in m), matches[0])
+            print(f"[SCRAPER] Selected m3u8: {master}")
             headers = {
                 "Referer": player_url,
                 "User-Agent": driver.execute_script("return navigator.userAgent;")
             }
             curl_cmd = f"curl '{master}' -H 'Referer: {player_url}' -H 'User-Agent: {headers['User-Agent']}'"
             
+            print("[SCRAPER] SUCCESS! Returning result.")
             return {
                 "url": master,
                 "headers": headers,
