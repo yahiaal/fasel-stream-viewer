@@ -49,6 +49,7 @@ def scrape_stream_app_mode(target_url):
     
     try:
         is_linux = sys.platform.startswith("linux")
+        print(f"[SCRAPER] Platform: {sys.platform}, is_linux: {is_linux}")
         
         # 1. Setup Driver Path
         custom_driver_path = None
@@ -57,10 +58,13 @@ def scrape_stream_app_mode(target_url):
             
         #     # Start Xvfb if available (better than headless for detection)
         if is_linux and Display:
+            print("[SCRAPER] Starting Xvfb display...")
             display = Display(visible=0, size=(1280, 720))
             display.start()
+            print("[SCRAPER] Xvfb started.")
 
         # 2. Initialize Chrome Options
+        print("[SCRAPER] Configuring Chrome options...")
         options = uc.ChromeOptions()
         if is_linux and not Display:
             # If no Xvfb, forced to use headless
@@ -68,8 +72,13 @@ def scrape_stream_app_mode(target_url):
         
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-software-rasterizer")
+        print("[SCRAPER] Chrome options configured.")
         
         # 3. Initialize Driver
+        print("[SCRAPER] Initializing ChromeDriver (version_main=144)... This may take time.")
         # Force ChromeDriver version to match installed Chrome (144)
         kwargs = {
             "options": options,
@@ -77,10 +86,14 @@ def scrape_stream_app_mode(target_url):
         }
             
         driver = uc.Chrome(**kwargs)
+        print("[SCRAPER] ChromeDriver initialized successfully!")
         
         # 4. Navigation & Logic
+        print(f"[SCRAPER] Navigating to: {target_url}")
         driver.get(target_url)
+        print("[SCRAPER] Page loaded, waiting 3 seconds...")
         time.sleep(3)
+        print(f"[SCRAPER] Current page title: {driver.title}")
         
         # Find player iframe
         player_url = None
