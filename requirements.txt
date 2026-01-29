@@ -3,3 +3,4 @@ httpx
 selectolax
 seleniumbase
 undetected-chromedriver
+pyvirtualdisplay
