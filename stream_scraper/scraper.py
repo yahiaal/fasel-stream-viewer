@@ -49,20 +49,10 @@ def scrape_stream_app_mode(target_url):
                         break
             
             if not player_url:
-                # Maybe we need to click "Watch" or a server tab first?
-                # Common in movies: '.server--item'
-                if sb.is_element_visible(".server--item"):
-                    try:
-                        sb.click(".server--item")
-                        sb.sleep(2)
-                        # Re-check frames
-                        frames = sb.find_elements("iframe")
-                        for f in frames:
-                            src = f.get_attribute("src")
-                            if src and "video_player" in src:
-                                player_url = src
-                                break
-                    except: pass
+                # Debugging info
+                page_title = sb.get_title()
+                page_url = sb.get_current_url()
+                return {"error": f"Player iframe not found. Title: {page_title}, URL: {page_url}"}
             
             if player_url:
                 # print(f"DEBUG: Found player: {player_url}")
@@ -82,18 +72,19 @@ def scrape_stream_app_mode(target_url):
                     }
                     curl_cmd = f"curl '{master}' -H 'Referer: {player_url}' -H 'User-Agent: {headers['User-Agent']}'"
                     
-                    result_data = {
+                    return {
                         "url": master,
                         "headers": headers,
                         "curl": curl_cmd
                     }
+                else:
+                    return {"error": f"No M3U8 found in player source. Player: {player_url}"}
                 
     except Exception as e:
         print(f"Scraper Error: {e}")
-        # Return error so UI can show it
         return {"error": str(e)}
         
-    return result_data
+    return {"error": "Unknown scraper failure"}
 
 if __name__ == "__main__":
     # Test
