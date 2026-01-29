@@ -20,11 +20,14 @@ def scrape_stream_app_mode(target_url):
         # Re-enabling uc=True because standard headless is blocked.
         # Adding xvfb=True ONLY on Linux (Cloud) to help with stability.
         is_linux = sys.platform.startswith("linux")
-        # On Windows, use visible mode for stability. On Linux (Cloud), use headless.
+        
+        # Fix for Cloud: 'uc=True' fails with Permission Denied on Streamlit Cloud.
+        # We must use standard mode (uc=False) on Linux.
+        # On Windows, we keep uc=True (Visible) for local testing.
+        use_uc = False if is_linux else True
         use_headless = True if is_linux else False
         
-        # Removed ad_block_on=True as it might affect stability/extensions
-        with SB(uc=True, headless=use_headless, xvfb=is_linux) as sb:
+        with SB(uc=use_uc, headless=use_headless, xvfb=is_linux) as sb:
             # print(f"DEBUG: Navigating to {target_url}")
             sb.open(target_url)
             sb.wait_for_ready_state_complete()
